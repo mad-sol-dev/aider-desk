@@ -4,6 +4,7 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 // Import your translation files
 import en from '@common/locales/en.json';
 import zh from '@common/locales/zh.json';
+import de from '@common/locales/de.json';
 
 export const SUPPORTED_LANGUAGES = {
   en: {
@@ -13,6 +14,10 @@ export const SUPPORTED_LANGUAGES = {
   zh: {
     label: '简体中文',
     countryCode: 'CN',
+  },
+  de: {
+    label: 'Deutsch',
+    countryCode: 'DE',
   },
 };
 
@@ -24,6 +29,7 @@ void i18n
     resources: {
       en: { translation: en },
       zh: { translation: zh },
+      de: { translation: de },
     },
     fallbackLng: 'en',
     interpolation: {
