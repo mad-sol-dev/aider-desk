@@ -40,6 +40,17 @@ const LOCAL_MODELS = [
   },
 ];
 
+const EMBEDDING_RUNTIMES = [
+  { value: 'in-process', label: 'In-process' },
+  { value: 'worker', label: 'Worker (safe mode)' },
+];
+
+const EMBEDDING_DEVICES = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'cpu', label: 'CPU' },
+  { value: 'cuda', label: 'CUDA' },
+];
+
 type Props = {
   settings: SettingsData;
   setSettings: (settings: SettingsData) => void;
@@ -187,6 +198,26 @@ export const MemorySettings = ({ settings, setSettings }: Props) => {
     });
   };
 
+  const handleEmbeddingRuntimeChange = (runtime: string) => {
+    setSettings({
+      ...settings,
+      memory: {
+        ...settings.memory,
+        embeddingRuntime: runtime as SettingsData['memory']['embeddingRuntime'],
+      },
+    });
+  };
+
+  const handleEmbeddingDeviceChange = (device: string) => {
+    setSettings({
+      ...settings,
+      memory: {
+        ...settings.memory,
+        embeddingDevice: device as SettingsData['memory']['embeddingDevice'],
+      },
+    });
+  };
+
   return (
     <div className="space-y-6 h-full flex flex-col">
       <Section id="memory-general" title={t('settings.memory.configuration')}>
@@ -240,6 +271,34 @@ export const MemorySettings = ({ settings, setSettings }: Props) => {
                   onChange={handleMaxDistanceChange}
                 />
               </div>
+
+              <div>
+                <Select
+                  label={t('settings.memory.embeddingRuntime.label')}
+                  value={settings.memory.embeddingRuntime}
+                  onChange={handleEmbeddingRuntimeChange}
+                  options={EMBEDDING_RUNTIMES.map((runtime) => ({
+                    value: runtime.value,
+                    label: runtime.label,
+                  }))}
+                  className="w-full"
+                />
+                <p className="text-xs text-text-secondary mt-1">{t('settings.memory.embeddingRuntime.description')}</p>
+              </div>
+
+              <div>
+                <Select
+                  label={t('settings.memory.embeddingDevice.label')}
+                  value={settings.memory.embeddingDevice}
+                  onChange={handleEmbeddingDeviceChange}
+                  options={EMBEDDING_DEVICES.map((device) => ({
+                    value: device.value,
+                    label: device.label,
+                  }))}
+                  className="w-full"
+                />
+                <p className="text-xs text-text-secondary mt-1">{t('settings.memory.embeddingDevice.description')}</p>
+              </div>
             </div>
           )}
           {embeddingProgress && embeddingProgress.phase !== MemoryEmbeddingProgressPhase.Idle && (
@@ -266,6 +325,7 @@ export const MemorySettings = ({ settings, setSettings }: Props) => {
                   })}
                 </span>
               )}
+              {embeddingProgress.warning && <span className="text-yellow-600"> {embeddingProgress.warning}</span>}
             </div>
           )}
         </div>

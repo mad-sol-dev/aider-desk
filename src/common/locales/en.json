@@ -730,6 +730,14 @@
         "label": "Embedding Provider",
         "description": "Choose the embedding provider to use for memory functionality"
       },
+      "embeddingRuntime": {
+        "label": "Embedding runtime",
+        "description": "Use the worker runtime to avoid Electron crashes from native dependencies."
+      },
+      "embeddingDevice": {
+        "label": "Embedding device",
+        "description": "Choose which device to use for embeddings when available."
+      },
       "maxDistance": {
         "label": "Relevance threshold",
         "description": "Higher values retrieve more (and less relevant) memories. Lower values retrieve fewer (and more relevant) memories."

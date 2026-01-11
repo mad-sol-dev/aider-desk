@@ -1,4 +1,7 @@
 import * as fs from 'fs';
+import { createRequire } from 'module';
+import path from 'path';
+import { pathToFileURL } from 'url';
 
 import { MemoryConfig, MemoryEmbeddingProgress, MemoryEmbeddingProgressPhase, MemoryEntry, MemoryEntryType, SettingsData } from '@common/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -8,6 +11,7 @@ import type { FeatureExtractionPipeline } from '@huggingface/transformers';
 import { AIDER_DESK_CACHE_DIR, AIDER_DESK_MEMORY_FILE } from '@/constants';
 import logger from '@/logger';
 import { Store } from '@/store';
+import { EmbeddingRunner } from '@/memory/embedding-runner';
 
 type LanceDbModule = typeof import('@lancedb/lancedb');
 type TransformersModule = typeof import('@huggingface/transformers');
@@ -19,6 +23,7 @@ export class MemoryManager {
   private db: import('@lancedb/lancedb').Connection | null = null;
   private table: import('@lancedb/lancedb').Table | null = null;
   private embeddingPipelinePromise: Promise<FeatureExtractionPipeline | null> | null = null;
+  private embeddingRunner: EmbeddingRunner | null = null;
   private isInitialized = false;
   private readonly tableName = 'memories';
 
@@ -81,9 +86,75 @@ export class MemoryManager {
           finished: false,
         };
 
+        const useEmbeddingRunner = process.env.AIDER_DESK_EMBEDDINGS_PROCESS === '1' || config.embeddingRuntime === 'worker';
+        if (useEmbeddingRunner) {
+          try {
+            const device = process.env.AIDER_DESK_EMBEDDINGS_DEVICE ?? (config.embeddingDevice !== 'auto' ? config.embeddingDevice : undefined);
+            this.embeddingRunner = new EmbeddingRunner(config.model, AIDER_DESK_CACHE_DIR, device);
+            await this.embeddingRunner.init();
+            this.isInitialized = true;
+            if (device === 'cuda' && this.embeddingRunner.getActiveDevice() === 'cpu') {
+              this.embeddingProgress.warning = 'CUDA unavailable, falling back to CPU embeddings.';
+            }
+            this.embeddingProgress = {
+              phase: MemoryEmbeddingProgressPhase.Done,
+              status: this.embeddingProgress.status,
+              done: this.embeddingProgress.total,
+              total: this.embeddingProgress.total,
+              finished: true,
+              warning: this.embeddingProgress.warning,
+            };
+          } catch (error) {
+            this.embeddingProgress = {
+              phase: MemoryEmbeddingProgressPhase.Error,
+              status: this.embeddingProgress.status,
+              done: this.embeddingProgress.done,
+              total: this.embeddingProgress.total,
+              finished: true,
+              error: error instanceof Error ? error.message : String(error),
+            };
+            logger.error('Failed to initialize embedding worker:', error);
+          }
+          logger.info('Memory manager initialized successfully');
+          return;
+        }
+
         if (!this.transformers) {
           try {
-            this.transformers = await import('@huggingface/transformers');
+            const useWebRuntime = process.env.AIDER_DESK_ONNX_RUNTIME === 'web';
+            if (useWebRuntime) {
+              const require = createRequire(import.meta.url);
+              const entryPath = require.resolve('@huggingface/transformers');
+              const packageRoot = path.dirname(path.dirname(entryPath));
+              const transformersWebPath = path.join(packageRoot, 'dist', 'transformers.web.js');
+              const moduleUrl = pathToFileURL(transformersWebPath).href;
+              this.transformers = (await import(moduleUrl)) as unknown as TransformersModule;
+              const env = (
+                this.transformers as unknown as {
+                  env?: {
+                    allowLocalModels?: boolean;
+                    allowRemoteModels?: boolean;
+                    localModelPath?: string;
+                    cacheDir?: string;
+                    useFS?: boolean;
+                    useFSCache?: boolean;
+                  };
+                }
+              ).env;
+              if (env) {
+                env.allowLocalModels = true;
+                env.allowRemoteModels = true;
+                env.localModelPath = AIDER_DESK_CACHE_DIR;
+                env.cacheDir = AIDER_DESK_CACHE_DIR;
+                env.useFS = true;
+                env.useFSCache = true;
+              }
+            } else {
+              this.transformers = (await import('@huggingface/transformers')) as unknown as TransformersModule;
+            }
+            if (useWebRuntime) {
+              logger.info('Using transformers.web.js (onnxruntime-web) for local embeddings');
+            }
           } catch (error) {
             this.embeddingProgress = {
               phase: MemoryEmbeddingProgressPhase.Error,
@@ -148,6 +219,9 @@ export class MemoryManager {
     if (this.isInitialized) {
       return true;
     }
+    if (this.embeddingRunner) {
+      return this.isInitialized;
+    }
     if (this.embeddingPipelinePromise) {
       await this.embeddingPipelinePromise;
     }
@@ -191,13 +265,44 @@ export class MemoryManager {
 
     this.isInitialized = false;
 
+    const useEmbeddingRunner = process.env.AIDER_DESK_EMBEDDINGS_PROCESS === '1' || newSettings.memory.embeddingRuntime === 'worker';
+    if (useEmbeddingRunner) {
+      try {
+        const device =
+          process.env.AIDER_DESK_EMBEDDINGS_DEVICE ?? (newSettings.memory.embeddingDevice !== 'auto' ? newSettings.memory.embeddingDevice : undefined);
+        this.embeddingRunner = new EmbeddingRunner(newModel, AIDER_DESK_CACHE_DIR, device);
+        await this.embeddingRunner.init();
+        this.isInitialized = true;
+        if (device === 'cuda' && this.embeddingRunner.getActiveDevice() === 'cpu') {
+          this.embeddingProgress.warning = 'CUDA unavailable, falling back to CPU embeddings.';
+        } else {
+          this.embeddingProgress.warning = undefined;
+        }
+      } catch (error) {
+        this.embeddingProgress = {
+          phase: MemoryEmbeddingProgressPhase.Error,
+          status: this.embeddingProgress.status,
+          done: this.embeddingProgress.done,
+          total: this.embeddingProgress.total,
+          finished: true,
+          error: error instanceof Error ? error.message : String(error),
+        };
+        logger.error('Failed to initialize embedding worker:', error);
+        return;
+      }
+    }
+
+    const useEmbeddingRunnerForMigration = useEmbeddingRunner;
+
     const migrate = async () => {
-      if (!this.embeddingPipelinePromise) {
+      if (!useEmbeddingRunnerForMigration && !this.embeddingPipelinePromise) {
         logger.info('No embedding pipeline promise found during migration, skipping');
         return;
       }
 
-      await this.embeddingPipelinePromise;
+      if (!useEmbeddingRunnerForMigration && this.embeddingPipelinePromise) {
+        await this.embeddingPipelinePromise;
+      }
 
       if (!this.db) {
         logger.info('No database connection found during migration, skipping');
@@ -278,58 +383,69 @@ export class MemoryManager {
       }
     };
 
-    logger.info('Loading local embedding model... (this may take a moment on first run)');
-    if (!this.transformers) {
-      try {
-        this.transformers = await import('@huggingface/transformers');
-      } catch (error) {
-        this.embeddingProgress = {
-          phase: MemoryEmbeddingProgressPhase.Error,
-          status: this.embeddingProgress.status,
-          done: this.embeddingProgress.done,
-          total: this.embeddingProgress.total,
-          finished: true,
-          error: 'Failed to load @huggingface/transformers. This is usually a packaging issue with native dependencies (e.g. sharp/libvips).',
-        };
-        logger.error('Failed to load transformers module. Memory embedding will be unavailable.', error);
-        return;
+    if (!useEmbeddingRunner) {
+      logger.info('Loading local embedding model... (this may take a moment on first run)');
+      if (!this.transformers) {
+        try {
+          this.transformers = await import('@huggingface/transformers');
+        } catch (error) {
+          this.embeddingProgress = {
+            phase: MemoryEmbeddingProgressPhase.Error,
+            status: this.embeddingProgress.status,
+            done: this.embeddingProgress.done,
+            total: this.embeddingProgress.total,
+            finished: true,
+            error: 'Failed to load @huggingface/transformers. This is usually a packaging issue with native dependencies (e.g. sharp/libvips).',
+          };
+          logger.error('Failed to load transformers module. Memory embedding will be unavailable.', error);
+          return;
+        }
       }
-    }
 
-    this.embeddingPipelinePromise = this.transformers
-      .pipeline('feature-extraction', newModel, {
-        cache_dir: AIDER_DESK_CACHE_DIR,
-        progress_callback: (progress) => {
-          // @ts-expect-error progress is not typed properly
-          const status = `${Number(progress.progress).toFixed(2)}%`;
-          if (status) {
-            this.embeddingProgress.status = status;
-          }
-        },
-      })
-      .then(async (p) => {
-        this.isInitialized = true;
-        this.embeddingProgress = {
-          phase: MemoryEmbeddingProgressPhase.ReEmbedding,
-          status: this.embeddingProgress.status,
-          done: this.embeddingProgress.total,
-          total: this.embeddingProgress.total,
-          finished: true,
-        };
-        return p as FeatureExtractionPipeline;
-      })
-      .catch((error) => {
-        this.embeddingProgress = {
-          phase: MemoryEmbeddingProgressPhase.Error,
-          status: this.embeddingProgress.status,
-          done: this.embeddingProgress.done,
-          total: this.embeddingProgress.total,
-          finished: true,
-          error: error instanceof Error ? error.message : String(error),
-        };
-        logger.error('Failed to load local embedding model:', error);
-        return null;
-      });
+      this.embeddingPipelinePromise = this.transformers
+        .pipeline('feature-extraction', newModel, {
+          cache_dir: AIDER_DESK_CACHE_DIR,
+          progress_callback: (progress) => {
+            // @ts-expect-error progress is not typed properly
+            const status = `${Number(progress.progress).toFixed(2)}%`;
+            if (status) {
+              this.embeddingProgress.status = status;
+            }
+          },
+        })
+        .then(async (p) => {
+          this.isInitialized = true;
+          this.embeddingProgress = {
+            phase: MemoryEmbeddingProgressPhase.ReEmbedding,
+            status: this.embeddingProgress.status,
+            done: this.embeddingProgress.total,
+            total: this.embeddingProgress.total,
+            finished: true,
+          };
+          return p as FeatureExtractionPipeline;
+        })
+        .catch((error) => {
+          this.embeddingProgress = {
+            phase: MemoryEmbeddingProgressPhase.Error,
+            status: this.embeddingProgress.status,
+            done: this.embeddingProgress.done,
+            total: this.embeddingProgress.total,
+            finished: true,
+            error: error instanceof Error ? error.message : String(error),
+          };
+          logger.error('Failed to load local embedding model:', error);
+          return null;
+        });
+    } else {
+      this.embeddingProgress = {
+        phase: MemoryEmbeddingProgressPhase.ReEmbedding,
+        status: this.embeddingProgress.status,
+        done: 0,
+        total: this.embeddingProgress.total,
+        finished: false,
+        warning: this.embeddingProgress.warning,
+      };
+    }
 
     await migrate();
   }
@@ -343,6 +459,10 @@ export class MemoryManager {
     if (!this.isInitialized) {
       logger.error('Embedding pipeline not initialized. Call initialize() first.');
       throw new Error('Embedding pipeline not initialized. Call initialize() first.');
+    }
+
+    if (this.embeddingRunner) {
+      return this.embeddingRunner.embed(text);
     }
 
     const pipeline = await this.embeddingPipelinePromise;

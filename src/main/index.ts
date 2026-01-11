@@ -16,6 +16,33 @@ import logger from '@/logger';
 import { initManagers } from '@/managers';
 import { getDefaultProjectSettings } from '@/utils';
 
+const disableGpu = process.env.AIDER_DESK_DISABLE_GPU === '1';
+if (disableGpu) {
+  app.commandLine.appendSwitch('disable-gpu');
+  app.commandLine.appendSwitch('disable-gpu-sandbox');
+  app.commandLine.appendSwitch('disable-features', 'Vulkan');
+}
+
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught exception in main process:', error);
+});
+
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled rejection in main process:', reason);
+});
+
+app.on('render-process-gone', (_event, details) => {
+  logger.error('Renderer process gone:', details);
+});
+
+app.on('child-process-gone', (_event, details) => {
+  if (details.type === 'GPU') {
+    logger.error('GPU process gone:', details);
+    return;
+  }
+  logger.error('Child process gone:', details);
+});
+
 const setupCustomMenu = (): void => {
   const menuTemplate: Electron.MenuItemConstructorOptions[] = [
     // File menu

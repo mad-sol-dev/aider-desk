@@ -12,6 +12,8 @@ export const createMockSettings = (overrides: Partial<SettingsData> = {}): Setti
       provider: MemoryEmbeddingProvider.SentenceTransformers,
       model: 'all-MiniLM-L6-v2',
       maxDistance: 0.5,
+      embeddingRuntime: 'in-process',
+      embeddingDevice: 'auto',
     },
   } as SettingsData;
 

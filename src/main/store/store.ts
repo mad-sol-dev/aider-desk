@@ -81,6 +81,8 @@ export const DEFAULT_SETTINGS: SettingsData = {
     provider: MemoryEmbeddingProvider.SentenceTransformers,
     model: 'Xenova/all-MiniLM-L6-v2',
     maxDistance: 1.5,
+    embeddingRuntime: 'in-process',
+    embeddingDevice: 'auto',
   },
   taskSettings: {
     smartTaskState: true,

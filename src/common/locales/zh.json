@@ -687,6 +687,14 @@
         "label": "嵌入提供商",
         "description": "选择用于记忆功能的嵌入提供商"
       },
+      "embeddingRuntime": {
+        "label": "嵌入运行方式",
+        "description": "使用工作进程可避免 Electron 原生依赖导致的崩溃。"
+      },
+      "embeddingDevice": {
+        "label": "嵌入设备",
+        "description": "选择可用的嵌入计算设备。"
+      },
       "maxDistance": {
         "label": "相关性阈值",
         "description": "值越高会检索到更多（但相关性更低）的记忆。值越低会检索到更少（但相关性更高）的记忆。"

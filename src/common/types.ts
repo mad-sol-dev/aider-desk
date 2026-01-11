@@ -524,6 +524,8 @@ export interface MemoryConfig {
   provider: MemoryEmbeddingProvider;
   model: string;
   maxDistance: number;
+  embeddingRuntime: 'in-process' | 'worker';
+  embeddingDevice: 'auto' | 'cpu' | 'cuda';
 }
 
 export enum MemoryEmbeddingProgressPhase {
@@ -541,6 +543,7 @@ export interface MemoryEmbeddingProgress {
   total: number;
   finished: boolean;
   error?: string;
+  warning?: string;
 }
 
 export interface SettingsData {
