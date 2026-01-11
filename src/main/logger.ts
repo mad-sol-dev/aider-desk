@@ -3,24 +3,28 @@ import DailyRotateFile from 'winston-daily-rotate-file';
 
 import { LOGS_DIR } from '@/constants';
 
+const isTestEnv = process.env.NODE_ENV === 'test' || Boolean(process.env.VITEST);
+
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
   format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
-  transports: [
-    new DailyRotateFile({
-      filename: `${LOGS_DIR}/error-%DATE%.log`,
-      datePattern: 'YYYY-MM-DD',
-      level: 'error',
-      maxSize: '20m',
-      maxFiles: '14d',
-    }),
-    new DailyRotateFile({
-      filename: `${LOGS_DIR}/combined-%DATE%.log`,
-      datePattern: 'YYYY-MM-DD',
-      maxSize: '20m',
-      maxFiles: '14d',
-    }),
-  ],
+  transports: isTestEnv
+    ? []
+    : [
+        new DailyRotateFile({
+          filename: `${LOGS_DIR}/error-%DATE%.log`,
+          datePattern: 'YYYY-MM-DD',
+          level: 'error',
+          maxSize: '20m',
+          maxFiles: '14d',
+        }),
+        new DailyRotateFile({
+          filename: `${LOGS_DIR}/combined-%DATE%.log`,
+          datePattern: 'YYYY-MM-DD',
+          maxSize: '20m',
+          maxFiles: '14d',
+        }),
+      ],
 });
 
 // If we're not in production OR running in headless mode (Docker), also log to the console
