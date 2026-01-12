@@ -100,6 +100,10 @@ describe('Home', () => {
       </HotkeysProvider>,
     );
 
+    await waitFor(() => {
+      expect(mockApi.getOpenProjects).toHaveBeenCalled();
+    });
+
     const modelLibraryButton = screen.getByTitle('projectBar.modelLibrary');
     fireEvent.click(modelLibraryButton);
 

@@ -1,6 +1,8 @@
+import { ReactElement } from 'react';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TaskData, ProjectData, TaskStateData } from '@common/types';
+import { HotkeysProvider } from 'react-hotkeys-hook';
 
 import { ProjectView } from '../ProjectView';
 import { TaskSidebar } from '../TaskSidebar';
@@ -70,9 +72,11 @@ describe('ProjectView', () => {
     vi.mocked(useProjectSettings).mockReturnValue({ projectSettings: {} } as ReturnType<typeof useProjectSettings>);
   });
 
+  const renderWithHotkeys = (ui: ReactElement) => render(<HotkeysProvider initiallyActiveScopes={['home', 'task', 'dialog', 'modal']}>{ui}</HotkeysProvider>);
+
   it('initializes project and loads tasks', async () => {
     const mockShowSettingsPage = vi.fn();
-    render(<ProjectView project={mockProject} isActive={true} showSettingsPage={mockShowSettingsPage} />);
+    renderWithHotkeys(<ProjectView project={mockProject} isActive={true} showSettingsPage={mockShowSettingsPage} />);
 
     await waitFor(() => {
       expect(mockApi.startProject).toHaveBeenCalledWith(mockProject.baseDir);
@@ -82,7 +86,7 @@ describe('ProjectView', () => {
 
   it('renders task sidebar and active task view', async () => {
     const mockShowSettingsPage = vi.fn();
-    render(<ProjectView project={mockProject} isActive={true} showSettingsPage={mockShowSettingsPage} />);
+    renderWithHotkeys(<ProjectView project={mockProject} isActive={true} showSettingsPage={mockShowSettingsPage} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('task-sidebar')).toBeInTheDocument();
@@ -111,7 +115,7 @@ describe('ProjectView', () => {
     });
 
     const mockShowSettingsPage = vi.fn();
-    render(<ProjectView project={mockProject} isActive={true} showSettingsPage={mockShowSettingsPage} />);
+    renderWithHotkeys(<ProjectView project={mockProject} isActive={true} showSettingsPage={mockShowSettingsPage} />);
 
     await waitFor(() => {
       expect(capturedDeleteTask).toBeDefined();

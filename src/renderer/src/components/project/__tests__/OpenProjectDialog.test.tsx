@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ApplicationAPI } from '@common/api';
+import { HotkeysProvider } from 'react-hotkeys-hook';
 
 import { OpenProjectDialog } from '../OpenProjectDialog';
 
@@ -38,7 +39,11 @@ describe('OpenProjectDialog', () => {
 
   it('renders and allows browsing for a project', async () => {
     const onAddProject = vi.fn();
-    const { container } = render(<OpenProjectDialog onClose={vi.fn()} onAddProject={onAddProject} openProjects={[]} />);
+    const { container } = render(
+      <HotkeysProvider initiallyActiveScopes={['home', 'task', 'dialog', 'modal']}>
+        <OpenProjectDialog onClose={vi.fn()} onAddProject={onAddProject} openProjects={[]} />
+      </HotkeysProvider>,
+    );
 
     expect(screen.getByText('dialogs.openProjectTitle')).toBeInTheDocument();
 
@@ -54,7 +59,11 @@ describe('OpenProjectDialog', () => {
     const onAddProject = vi.fn();
     mockApi.isProjectPath.mockResolvedValue(true);
 
-    render(<OpenProjectDialog onClose={vi.fn()} onAddProject={onAddProject} openProjects={[]} />);
+    render(
+      <HotkeysProvider initiallyActiveScopes={['home', 'task', 'dialog', 'modal']}>
+        <OpenProjectDialog onClose={vi.fn()} onAddProject={onAddProject} openProjects={[]} />
+      </HotkeysProvider>,
+    );
 
     const input = screen.getByPlaceholderText('dialogs.projectPathPlaceholder');
     fireEvent.change(input, { target: { value: '/some/path' } });

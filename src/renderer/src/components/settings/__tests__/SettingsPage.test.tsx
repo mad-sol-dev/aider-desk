@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SettingsData } from '@common/types';
 import { ApplicationAPI } from '@common/api';
+import { HotkeysProvider } from 'react-hotkeys-hook';
 
 import { SettingsPage } from '../SettingsPage';
 
@@ -86,14 +87,22 @@ describe('SettingsPage', () => {
     vi.mocked(useApi).mockReturnValue(mockApi as unknown as ApplicationAPI);
   });
 
+  const renderWithHotkeys = (ui: ReactNode) => render(<HotkeysProvider initiallyActiveScopes={['home', 'task', 'dialog', 'modal']}>{ui}</HotkeysProvider>);
+
   it('renders and loads providers', async () => {
-    render(<SettingsPage onClose={vi.fn()} />);
+    renderWithHotkeys(<SettingsPage onClose={vi.fn()} />);
     expect(screen.getByText('settings.title')).toBeInTheDocument();
-    expect(mockApi.getProviders).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockApi.getProviders).toHaveBeenCalled();
+    });
   });
 
   it('calls saveSettings when Save is clicked after changes', async () => {
-    render(<SettingsPage onClose={vi.fn()} />);
+    renderWithHotkeys(<SettingsPage onClose={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(mockApi.getProviders).toHaveBeenCalled();
+    });
 
     fireEvent.click(screen.getByText('Change Language'));
 
@@ -108,9 +117,13 @@ describe('SettingsPage', () => {
     });
   });
 
-  it('calls onClose when Cancel is clicked', () => {
+  it('calls onClose when Cancel is clicked', async () => {
     const onClose = vi.fn();
-    render(<SettingsPage onClose={onClose} />);
+    renderWithHotkeys(<SettingsPage onClose={onClose} />);
+
+    await waitFor(() => {
+      expect(mockApi.getProviders).toHaveBeenCalled();
+    });
 
     fireEvent.click(screen.getByText('common.cancel'));
     expect(onClose).toHaveBeenCalled();

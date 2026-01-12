@@ -1,7 +1,8 @@
-import { ReactNode } from 'react';
+import { ReactElement, ReactNode } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TaskData } from '@common/types';
+import { HotkeysProvider } from 'react-hotkeys-hook';
 
 import { TaskSidebar } from '../TaskSidebar';
 
@@ -45,8 +46,12 @@ describe('TaskSidebar', () => {
     vi.mocked(useTask).mockReturnValue(createMockTaskContext());
   });
 
+  const renderWithHotkeys = (ui: ReactElement) => render(<HotkeysProvider initiallyActiveScopes={['home', 'task', 'dialog', 'modal']}>{ui}</HotkeysProvider>);
+
   it('renders a list of tasks', () => {
-    render(<TaskSidebar loading={false} tasks={mockTasks} activeTaskId="task-1" onTaskSelect={vi.fn()} isCollapsed={false} onToggleCollapse={vi.fn()} />);
+    renderWithHotkeys(
+      <TaskSidebar loading={false} tasks={mockTasks} activeTaskId="task-1" onTaskSelect={vi.fn()} isCollapsed={false} onToggleCollapse={vi.fn()} />,
+    );
 
     expect(screen.getByText('Task 1')).toBeInTheDocument();
     expect(screen.getByText('Task 2')).toBeInTheDocument();
@@ -54,7 +59,9 @@ describe('TaskSidebar', () => {
 
   it('calls onTaskSelect when a task is clicked', () => {
     const onTaskSelect = vi.fn();
-    render(<TaskSidebar loading={false} tasks={mockTasks} activeTaskId="task-1" onTaskSelect={onTaskSelect} isCollapsed={false} onToggleCollapse={vi.fn()} />);
+    renderWithHotkeys(
+      <TaskSidebar loading={false} tasks={mockTasks} activeTaskId="task-1" onTaskSelect={onTaskSelect} isCollapsed={false} onToggleCollapse={vi.fn()} />,
+    );
 
     fireEvent.click(screen.getByText('Task 2'));
     expect(onTaskSelect).toHaveBeenCalledWith('task-2');
@@ -62,7 +69,7 @@ describe('TaskSidebar', () => {
 
   it('calls createNewTask when plus button is clicked', () => {
     const createNewTask = vi.fn();
-    const { container } = render(
+    const { container } = renderWithHotkeys(
       <TaskSidebar
         loading={false}
         tasks={mockTasks}
@@ -79,7 +86,7 @@ describe('TaskSidebar', () => {
   });
 
   it('filters tasks based on search query', async () => {
-    const { container } = render(
+    const { container } = renderWithHotkeys(
       <TaskSidebar loading={false} tasks={mockTasks} activeTaskId="task-1" onTaskSelect={vi.fn()} isCollapsed={false} onToggleCollapse={vi.fn()} />,
     );
 
@@ -100,7 +107,7 @@ describe('TaskSidebar', () => {
       { id: 'task-2', name: 'Task 2', updatedAt: '2023-01-02T00:00:00Z' },
     ] as TaskData[];
 
-    const { container } = render(
+    const { container } = renderWithHotkeys(
       <TaskSidebar loading={false} tasks={tasks} activeTaskId="task-2" onTaskSelect={vi.fn()} isCollapsed={false} onToggleCollapse={vi.fn()} />,
     );
 
@@ -115,7 +122,9 @@ describe('TaskSidebar', () => {
       { id: 'task-2', name: 'Task 2', archived: true },
     ] as TaskData[];
 
-    render(<TaskSidebar loading={false} tasks={tasks} activeTaskId="task-1" onTaskSelect={vi.fn()} isCollapsed={false} onToggleCollapse={vi.fn()} />);
+    renderWithHotkeys(
+      <TaskSidebar loading={false} tasks={tasks} activeTaskId="task-1" onTaskSelect={vi.fn()} isCollapsed={false} onToggleCollapse={vi.fn()} />,
+    );
 
     expect(screen.getByText('Task 1')).toBeInTheDocument();
     expect(screen.queryByText('Task 2')).not.toBeInTheDocument();
