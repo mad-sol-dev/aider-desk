@@ -5,7 +5,6 @@ import path from 'node:path';
 
 import logger from '@/logger';
 import { RESOURCES_DIR } from '@/constants';
-import { getElectronApp, isDev } from '@/app';
 
 type RunnerMessage =
   | { id: string; type: 'init'; model: string; cacheDir: string; device?: string }
@@ -17,13 +16,6 @@ const resolveWorkerPath = (): string => {
   const envPath = process.env.AIDER_DESK_EMBEDDINGS_WORKER;
   if (envPath && fs.existsSync(envPath)) {
     return envPath;
-  }
-  const app = getElectronApp();
-  if (app && !isDev()) {
-    const appCandidate = path.join(app.getAppPath(), 'out', 'main', 'embedding-worker.mjs');
-    if (fs.existsSync(appCandidate)) {
-      return appCandidate;
-    }
   }
   const resourcesCandidate = path.join(RESOURCES_DIR, 'embedding-worker.mjs');
   if (fs.existsSync(resourcesCandidate)) {
