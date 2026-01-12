@@ -38,6 +38,7 @@ export class EmbeddingRunner {
   private requestId = 0;
   private readyPromise: Promise<void> | null = null;
   private activeDevice: string | null;
+  private stderrBuffer = '';
 
   constructor(
     private readonly model: string,
@@ -57,16 +58,23 @@ export class EmbeddingRunner {
       rl.on('line', (line) => this.handleLine(line));
 
       this.child.stderr.on('data', (chunk) => {
-        logger.warn('Embedding worker stderr:', chunk.toString());
+        const message = chunk.toString();
+        this.stderrBuffer = `${this.stderrBuffer}${message}`;
+        if (this.stderrBuffer.length > 8000) {
+          this.stderrBuffer = this.stderrBuffer.slice(-8000);
+        }
+        logger.warn('Embedding worker stderr:', message);
       });
 
       this.child.on('exit', (code, signal) => {
-        const error = new Error(`Embedding worker exited (code=${code}, signal=${signal})`);
+        const details = this.stderrBuffer.trim();
+        const error = new Error(`Embedding worker exited (code=${code}, signal=${signal})${details ? `: ${details}` : ''}`);
         for (const pending of this.pending.values()) {
           pending.reject(error);
         }
         this.pending.clear();
         this.child = null;
+        this.stderrBuffer = '';
       });
     }
 

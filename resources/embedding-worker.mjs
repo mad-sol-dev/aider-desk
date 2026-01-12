@@ -1,5 +1,4 @@
 import readline from 'node:readline';
-import { pipeline, env } from '@huggingface/transformers';
 
 const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
 
@@ -7,7 +6,17 @@ const send = (id, payload) => {
   process.stdout.write(`${JSON.stringify({ id, ...payload })}\n`);
 };
 
-const configureEnv = (cacheDir) => {
+let transformers = null;
+
+const getTransformers = async () => {
+  if (!transformers) {
+    transformers = await import('@huggingface/transformers');
+  }
+  return transformers;
+};
+
+const configureEnv = async (cacheDir) => {
+  const { env } = await getTransformers();
   env.allowLocalModels = true;
   env.allowRemoteModels = true;
   env.useFS = true;
@@ -26,8 +35,9 @@ const initModel = async ({ model, cacheDir, device }) => {
   if (!normalizedCacheDir) {
     throw new Error('cacheDir is required for embeddings');
   }
-  configureEnv(normalizedCacheDir);
+  await configureEnv(normalizedCacheDir);
   if (!embedder || model !== currentModel || device !== currentDevice || normalizedCacheDir !== currentCacheDir) {
+    const { pipeline } = await getTransformers();
     embedder = await pipeline('feature-extraction', model, {
       cache_dir: normalizedCacheDir,
       device: device || undefined,
@@ -77,5 +87,10 @@ rl.on('line', async (line) => {
 
 process.on('uncaughtException', (error) => {
   process.stderr.write(`Embedding worker crash: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (error) => {
+  process.stderr.write(`Embedding worker unhandled rejection: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`);
   process.exit(1);
 });
