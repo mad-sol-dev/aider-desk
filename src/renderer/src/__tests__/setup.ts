@@ -3,6 +3,8 @@ import { vi } from 'vitest';
 
 import { globalMockApi } from './mocks/api';
 
+process.env.BROWSERSLIST_IGNORE_OLD_DATA = '1';
+
 // Mock focus-trap-react
 vi.mock('focus-trap-react', () => ({
   FocusTrap: ({ children }: { children: React.ReactNode }) => children,
@@ -32,8 +34,35 @@ Object.defineProperty(window, 'electron', {
   writable: true,
 });
 
+Object.defineProperty(window, 'scrollTo', {
+  value: vi.fn(),
+  writable: true,
+});
+
 // Mock ApplicationAPI for renderer process
 Object.defineProperty(window, 'api', {
   value: globalMockApi,
   writable: true,
 });
+
+const ignoredConsoleSubstrings = ['react-datepicker/dist/index.es.js', "Not implemented: Window's scrollTo() method", 'Sourcemap for "'];
+const shouldIgnoreConsoleMessage = (args: unknown[]) =>
+  args.some((arg) => typeof arg === 'string' && ignoredConsoleSubstrings.some((substring) => arg.includes(substring)));
+
+/* eslint-disable no-console */
+const originalConsoleWarn = console.warn.bind(console);
+console.warn = (...args) => {
+  if (shouldIgnoreConsoleMessage(args)) {
+    return;
+  }
+  originalConsoleWarn(...args);
+};
+
+const originalConsoleError = console.error.bind(console);
+console.error = (...args) => {
+  if (shouldIgnoreConsoleMessage(args)) {
+    return;
+  }
+  originalConsoleError(...args);
+};
+/* eslint-enable no-console */

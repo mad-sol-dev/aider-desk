@@ -1,13 +1,13 @@
-import { ReactElement, ReactNode } from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { ReactNode } from 'react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TaskData } from '@common/types';
-import { HotkeysProvider } from 'react-hotkeys-hook';
 
 import { TaskSidebar } from '../TaskSidebar';
 
 import { useTask } from '@/contexts/TaskContext';
 import { createMockTaskContext } from '@/__tests__/mocks/contexts';
+import { renderWithHotkeys } from '@/__tests__/test-utils';
 
 // Mock react-i18next
 vi.mock('react-i18next', () => ({
@@ -45,8 +45,6 @@ describe('TaskSidebar', () => {
   beforeEach(() => {
     vi.mocked(useTask).mockReturnValue(createMockTaskContext());
   });
-
-  const renderWithHotkeys = (ui: ReactElement) => render(<HotkeysProvider initiallyActiveScopes={['home', 'task', 'dialog', 'modal']}>{ui}</HotkeysProvider>);
 
   it('renders a list of tasks', () => {
     renderWithHotkeys(

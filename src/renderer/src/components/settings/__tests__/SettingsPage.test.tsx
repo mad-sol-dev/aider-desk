@@ -1,15 +1,15 @@
 import { ReactNode } from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SettingsData } from '@common/types';
 import { ApplicationAPI } from '@common/api';
-import { HotkeysProvider } from 'react-hotkeys-hook';
 
 import { SettingsPage } from '../SettingsPage';
 
 import { useSettings } from '@/contexts/SettingsContext';
 import { useAgents } from '@/contexts/AgentsContext';
 import { useApi } from '@/contexts/ApiContext';
+import { renderWithHotkeys } from '@/__tests__/test-utils';
 
 // Mock react-i18next
 vi.mock('react-i18next', () => ({
@@ -86,8 +86,6 @@ describe('SettingsPage', () => {
 
     vi.mocked(useApi).mockReturnValue(mockApi as unknown as ApplicationAPI);
   });
-
-  const renderWithHotkeys = (ui: ReactNode) => render(<HotkeysProvider initiallyActiveScopes={['home', 'task', 'dialog', 'modal']}>{ui}</HotkeysProvider>);
 
   it('renders and loads providers', async () => {
     renderWithHotkeys(<SettingsPage onClose={vi.fn()} />);

@@ -1,8 +1,6 @@
-import { ReactElement } from 'react';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { screen, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TaskData, ProjectData, TaskStateData } from '@common/types';
-import { HotkeysProvider } from 'react-hotkeys-hook';
 
 import { ProjectView } from '../ProjectView';
 import { TaskSidebar } from '../TaskSidebar';
@@ -11,6 +9,7 @@ import { useApi } from '@/contexts/ApiContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useProjectSettings } from '@/contexts/ProjectSettingsContext';
 import { createMockApi } from '@/__tests__/mocks/api';
+import { renderWithHotkeys } from '@/__tests__/test-utils';
 
 // Mock react-i18next
 vi.mock('react-i18next', () => ({
@@ -71,8 +70,6 @@ describe('ProjectView', () => {
     vi.mocked(useSettings).mockReturnValue({ settings: { startupMode: 'empty' } } as ReturnType<typeof useSettings>);
     vi.mocked(useProjectSettings).mockReturnValue({ projectSettings: {} } as ReturnType<typeof useProjectSettings>);
   });
-
-  const renderWithHotkeys = (ui: ReactElement) => render(<HotkeysProvider initiallyActiveScopes={['home', 'task', 'dialog', 'modal']}>{ui}</HotkeysProvider>);
 
   it('initializes project and loads tasks', async () => {
     const mockShowSettingsPage = vi.fn();

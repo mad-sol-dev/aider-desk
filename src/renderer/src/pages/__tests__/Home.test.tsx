@@ -1,6 +1,5 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { HotkeysProvider } from 'react-hotkeys-hook';
 import { ApplicationAPI } from '@common/api';
 import { ProjectData } from '@common/types';
 
@@ -8,6 +7,7 @@ import { Home } from '../Home';
 
 import { useApi } from '@/contexts/ApiContext';
 import { createMockApi } from '@/__tests__/mocks/api';
+import { renderWithHotkeys } from '@/__tests__/test-utils';
 
 // Mock contexts
 vi.mock('@/contexts/ApiContext', () => ({
@@ -82,11 +82,7 @@ describe('Home', () => {
   });
 
   it('renders and shows NoProjectsOpen when no projects are loaded', async () => {
-    render(
-      <HotkeysProvider initiallyActiveScopes={['home']}>
-        <Home />
-      </HotkeysProvider>,
-    );
+    renderWithHotkeys(<Home />, { scopes: ['home'] });
 
     await waitFor(() => {
       expect(screen.getByTestId('no-projects')).toBeInTheDocument();
@@ -94,11 +90,7 @@ describe('Home', () => {
   });
 
   it('opens Model Library when icon is clicked', async () => {
-    render(
-      <HotkeysProvider initiallyActiveScopes={['home']}>
-        <Home />
-      </HotkeysProvider>,
-    );
+    renderWithHotkeys(<Home />, { scopes: ['home'] });
 
     await waitFor(() => {
       expect(mockApi.getOpenProjects).toHaveBeenCalled();
@@ -120,11 +112,7 @@ describe('Home', () => {
       return Promise.resolve(mockProjects.map((p) => ({ ...p, active: p.baseDir === baseDir })));
     });
 
-    render(
-      <HotkeysProvider initiallyActiveScopes={['home']}>
-        <Home />
-      </HotkeysProvider>,
-    );
+    renderWithHotkeys(<Home />, { scopes: ['home'] });
 
     await waitFor(() => {
       expect(screen.queryByTestId('no-projects')).not.toBeInTheDocument();
@@ -145,11 +133,7 @@ describe('Home', () => {
     ] as ProjectData[];
     mockApi.getOpenProjects.mockResolvedValue(mockProjects);
 
-    render(
-      <HotkeysProvider initiallyActiveScopes={['home']}>
-        <Home />
-      </HotkeysProvider>,
-    );
+    renderWithHotkeys(<Home />, { scopes: ['home'] });
 
     await waitFor(() => {
       expect(screen.queryByTestId('no-projects')).not.toBeInTheDocument();
