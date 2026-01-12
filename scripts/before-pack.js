@@ -3,6 +3,18 @@ const path = require('path');
 const { Arch } = require('electron-builder');
 
 exports.default = async function(context) {
+  const rootDir = path.join(__dirname, '..');
+  const workerSource = path.join(rootDir, 'resources', 'embedding-worker.mjs');
+  const workerTargetDir = path.join(rootDir, 'out', 'main');
+  const workerTarget = path.join(workerTargetDir, 'embedding-worker.mjs');
+  if (fs.existsSync(workerSource)) {
+    if (!fs.existsSync(workerTargetDir)) {
+      fs.mkdirSync(workerTargetDir, { recursive: true });
+    }
+    fs.copyFileSync(workerSource, workerTarget);
+    console.log('Copied embedding worker into app bundle output.');
+  }
+
   const arch = context.arch === Arch.x64 ? 'x64' : context.arch === Arch.arm64 ? 'arm64' : undefined;
   const platform = context.packager.platform.name;
 

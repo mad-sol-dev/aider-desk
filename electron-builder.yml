@@ -14,6 +14,8 @@ files:
   - '!.aider-desk/*'
   - '!llms.txt'
 extraResources:
+  - from: ./resources/embedding-worker.mjs
+    to: embedding-worker.mjs
   - from: ./resources/connector
     to: connector
     filter:

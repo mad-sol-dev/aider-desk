@@ -5,6 +5,7 @@ import path from 'node:path';
 
 import logger from '@/logger';
 import { RESOURCES_DIR } from '@/constants';
+import { getElectronApp, isDev } from '@/app';
 
 type RunnerMessage =
   | { id: string; type: 'init'; model: string; cacheDir: string; device?: string }
@@ -17,11 +18,18 @@ const resolveWorkerPath = (): string => {
   if (envPath && fs.existsSync(envPath)) {
     return envPath;
   }
-  const candidate = path.join(RESOURCES_DIR, 'embedding-worker.mjs');
-  if (fs.existsSync(candidate)) {
-    return candidate;
+  const app = getElectronApp();
+  if (app && !isDev()) {
+    const appCandidate = path.join(app.getAppPath(), 'out', 'main', 'embedding-worker.mjs');
+    if (fs.existsSync(appCandidate)) {
+      return appCandidate;
+    }
   }
-  throw new Error(`Embedding worker not found at ${candidate}`);
+  const resourcesCandidate = path.join(RESOURCES_DIR, 'embedding-worker.mjs');
+  if (fs.existsSync(resourcesCandidate)) {
+    return resourcesCandidate;
+  }
+  throw new Error(`Embedding worker not found at ${resourcesCandidate}`);
 };
 
 export class EmbeddingRunner {
