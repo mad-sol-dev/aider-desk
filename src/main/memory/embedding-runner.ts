@@ -43,8 +43,12 @@ export class EmbeddingRunner {
   async init(): Promise<void> {
     if (!this.child) {
       const workerPath = resolveWorkerPath();
-      const nodeBin = process.env.AIDER_DESK_EMBEDDINGS_NODE_BIN || 'node';
-      this.child = spawn(nodeBin, [workerPath], { stdio: ['pipe', 'pipe', 'pipe'] });
+      const nodeBin = process.env.AIDER_DESK_EMBEDDINGS_NODE_BIN || process.execPath || 'node';
+      const env = {
+        ...process.env,
+        ...(nodeBin === process.execPath ? { ELECTRON_RUN_AS_NODE: '1' } : {}),
+      };
+      this.child = spawn(nodeBin, [workerPath], { stdio: ['pipe', 'pipe', 'pipe'], env });
 
       const rl = readline.createInterface({ input: this.child.stdout });
       rl.on('line', (line) => this.handleLine(line));
